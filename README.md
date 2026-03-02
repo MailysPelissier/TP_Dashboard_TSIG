@@ -22,7 +22,7 @@ The dashboard is hosted using **GitHub Pages**.
 
 Open it directly in your browser:
 
-https://MailysPelissier.github.io/TP_Dashboard/
+https://mailyspelissier.github.io/TP_Dashboard_TSIG/
 
 No installation required.
 
@@ -35,7 +35,7 @@ If you want to run it locally:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/MailysPelissier/TP_Dashboard.git
+git clone https://github.com/MailysPelissier/TP_Dashboard_TSIG.git
 ```
 
 2. Open the folder.
