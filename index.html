@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>TP_Dashboard_Mailys_Pelissier</title>
+
+    <!-- CSS Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <!-- Partie CSS -->
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            font-family: Arial;
+        }
+
+        #map {
+            width: 65%;
+            height: 100vh;
+        }
+
+        #sidebar {
+            width: 35%;
+            padding: 20px;
+            background: #f4f4f4;
+            overflow: auto;
+        }
+
+        select,
+        input {
+            width: 100%;
+            margin-bottom: 15px;
+            padding: 6px;
+        }
+
+        #legend {
+            margin-top: 10px;
+            padding: 10px;
+            background: white;
+            border: 1px solid #ccc;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+
+    <div id="sidebar">
+        <h2>Indicateur</h2>
+        <select id="layerSelect">
+            <option value="number_WWTP">Proportion de stations de traitements de déchets Nereda</option>
+            <option value="capacity_pollution_eq">Proportion de la capacité de traitement des déchets Nereda</option>
+            <option value="bathing_water_provinces">Score de qualité de l'eau de baignade (de 0 à 100)</option>
+        </select>
+
+
+        <h3>Année : <span id="yearLabel"></span></h3>
+        <input type="range" id="yearSlider" min="2000" max="2025" step="1">
+
+        <hr>
+
+        <h3 id="regionTitle">Cliquez sur une province</h3>
+        <canvas id="chart"></canvas>
+        <br>
+        <canvas id="chartBar"></canvas>
+    </div>
+
+    <!-- Leaflet -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+
+        // Initialisation carte
+        let map = L.map('map').setView([0, 0], 2);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+
+        let geojsonLayer;
+        let chart;
+        let chartBar;
+        let currentData;
+        let currentYear;
+        let minVal, maxVal;
+
+        let legendControl = L.control({ position: "bottomright" });
+        legendControl.onAdd = function () {
+            let div = L.DomUtil.create("div", "info legend");
+            div.style.background = "white";
+            div.style.padding = "10px";
+            div.style.border = "1px solid #ccc";
+            div.innerHTML = "<b>Légende</b><br>";
+            return div;
+        };
+        legendControl.addTo(map);
+
+        let layerTitles = {
+            "number_WWTP": "Proportion de stations de traitements de déchets Nereda",
+            "capacity_pollution_eq": "Proportion de la capacité de traitement des déchets Nereda",
+            "bathing_water_provinces": "Score de qualité de l'eau de baignade (de 0 à 100)"
+        };
+
+        // Changement de couche à partir du menu déroulant
+        document.getElementById("layerSelect")
+            .addEventListener("change", function () {
+                loadLayer(this.value);
+            });
+
+        // Slider temporel
+        document.getElementById("yearSlider")
+            .addEventListener("input", function () {
+                currentYear = this.value;
+                document.getElementById("yearLabel").innerText = currentYear;
+                updateMap();
+            });
+
+        // Charger première couche au démarrage
+        loadLayer("number_WWTP");
+
+        // Charger couche (changement d'indicateur)
+        function loadLayer(name) {
+
+            if (geojsonLayer) map.removeLayer(geojsonLayer);
+
+            fetch('data/' + name + '.geojson')
+                .then(res => res.json())
+                .then(data => {
+
+                    currentData = data;
+
+                    let allValues = data.features.map(f => f.properties.valeur);
+                    minVal = Math.min(...allValues);
+                    maxVal = Math.max(...allValues);
+
+                    quantiles = getQuantiles(allValues, 5);
+
+                    let years = [...new Set(data.features.map(f => f.properties.annee))];
+                    years.sort((a, b) => a - b);
+
+                    document.getElementById("yearSlider").min = years[0];
+                    document.getElementById("yearSlider").max = years[years.length - 1];
+                    document.getElementById("yearSlider").value = years[years.length - 1];
+
+                    currentYear = years[years.length - 1];
+                    document.getElementById("yearLabel").innerText = currentYear;
+
+                    updateMap();
+                    map.fitBounds(L.geoJSON(data).getBounds());
+                });
+        }
+
+        // Mise à jour de la carte (changement de date)
+        function updateMap() {
+
+            if (geojsonLayer) map.removeLayer(geojsonLayer);
+
+            let filteredYear = currentData.features.filter(f =>
+                f.properties.annee == currentYear
+            );
+
+            geojsonLayer = L.geoJSON(filteredYear, {
+
+                style: function (feature) {
+                    return {
+                        fillColor: getColor(feature.properties.valeur),
+                        weight: 1,
+                        color: "#333",
+                        fillOpacity: 0.7
+                    }
+                },
+
+                onEachFeature: function (feature, layer) {
+
+                    layer.bindTooltip(
+                        feature.properties.region + "<br>Valeur: " + feature.properties.valeur
+                    );
+
+                    layer.on("click", function () {
+
+                        let region = feature.properties.region;
+                        document.getElementById("regionTitle").innerText = region;
+
+                        let regionData = currentData.features
+                            .filter(f => f.properties.region == region)
+                            .sort((a, b) => a.properties.annee - b.properties.annee);
+
+                        let labels = regionData.map(f => f.properties.annee);
+                        let vals = regionData.map(f => f.properties.valeur);
+
+                        updateChart(labels, vals);
+                        updateBarChart(regionData);
+                    });
+                }
+
+            }).addTo(map);
+
+            updateLegend();
+        }
+
+        // Mise à jour de la légende
+        function updateLegend() {
+
+            let div = document.querySelector(".legend");
+            div.innerHTML = "<b>Légende</b><br>";
+
+            for (let i = 0; i < quantiles.length - 1; i++) {
+
+                let from = quantiles[i];
+                let to = quantiles[i + 1];
+
+                if (from === to) continue; // sécurité supplémentaire
+
+                div.innerHTML +=
+                    '<div class="legend-item">' +
+                    '<div class="legend-color" style="background:' + getColor(from) + '"></div>' +
+                    Math.round(from) + " - " + Math.round(to) +
+                    '</div>';
+            }
+        }
+
+        // Associer la couleur selon le quantile
+        function getColor(value) {
+
+            const baseColors = [
+                "#f7fbff",
+                "#c6dbef",
+                "#6baed6",
+                "#2171b5",
+                "#08306b"
+            ];
+
+            let colors = baseColors.slice(0, quantiles.length - 1);
+
+            for (let i = 0; i < quantiles.length - 1; i++) {
+                if (value <= quantiles[i + 1]) {
+                    return colors[i];
+                }
+            }
+
+            return colors[colors.length - 1];
+        }
+
+        // Calcul des quantiles
+        let quantiles = [];
+        function getQuantiles(values, n) {
+
+            values = [...values].sort((a, b) => a - b);
+
+            let breaks = [];
+
+            for (let i = 0; i <= n; i++) {
+                let q = i / n;
+                let pos = Math.floor(q * (values.length - 1));
+                breaks.push(values[pos]);
+            }
+
+            // Supprimer doublons
+            breaks = [...new Set(breaks)];
+
+            return breaks;
+        }
+
+        // Création du graphique
+        function updateChart(labels, values) {
+
+            if (chart) chart.destroy();
+
+            let ctx = document.getElementById("chart").getContext("2d");
+
+            let selectedLayer = document.getElementById("layerSelect").value;
+
+            chart = new Chart(ctx, {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        borderColor: "blue",
+                        tension: 0.2,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: layerTitles[selectedLayer]
+                        }
+                    },
+                }
+
+            });
+        }
+
+        // Création du graphique à barres verticales
+        function updateBarChart(regionData) {
+
+            if (chartBar) chartBar.destroy();
+
+            let ctx = document.getElementById("chartBar").getContext("2d");
+            let selectedLayer = document.getElementById("layerSelect").value;
+
+            let labels = regionData.map(f => f.properties.annee);
+
+            let datasets = [];
+
+            if (selectedLayer === "number_WWTP" || selectedLayer === "capacity_pollution_eq") {
+
+                datasets = [
+                    {
+                        label: "Total",
+                        data: regionData.map(f => f.properties.total),
+                        backgroundColor: "#bdd7e7"
+                    },
+                    {
+                        label: "Nereda hybride",
+                        data: regionData.map(f => f.properties.nereda_hyb),
+                        backgroundColor: "#3182bd"
+                    },
+                    {
+                        label: "Nereda",
+                        data: regionData.map(f => f.properties.nereda),
+                        backgroundColor: "#08519c"
+                    }
+                ];
+
+            } else if (selectedLayer === "bathing_water_provinces") {
+
+                datasets = [
+                    {
+                        label: "Non spécifié",
+                        data: regionData.map(f => f.properties.quality0),
+                        backgroundColor: "#d73027"
+                    },
+                    {
+                        label: "Mauvaise",
+                        data: regionData.map(f => f.properties.quality4),
+                        backgroundColor: "#fc8d59"
+                    },
+                    {
+                        label: "Suffisante",
+                        data: regionData.map(f => f.properties.quality3),
+                        backgroundColor: "#fee08b"
+                    },
+                    {
+                        label: "Bonne",
+                        data: regionData.map(f => f.properties.quality2),
+                        backgroundColor: "#91cf60"
+                    },
+                    {
+                        label: "Excdllente",
+                        data: regionData.map(f => f.properties.quality1),
+                        backgroundColor: "#1a9850"
+                    }
+                ];
+            }
+
+            chartBar = new Chart(ctx, {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true
+                        }
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: "Répartition par catégorie"
+                        }
+                    }
+                }
+            });
+        }
+
+    </script>
+
+</body>
+
+</html>
