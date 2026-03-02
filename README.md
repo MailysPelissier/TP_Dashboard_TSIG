@@ -66,7 +66,7 @@ TP_Dashboard/
 │   ├── capacity_pollution_eq.geojson
 │   └── bathing_water_provinces.geojson
 └── README.md
-```bash
+```
 
 ## Technologies used
 
