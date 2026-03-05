@@ -62,7 +62,7 @@
     <div id="sidebar">
         <h2>Indicateur</h2>
         <select id="layerSelect">
-            <option value="number_WWTP">Proportion de stations de traitements de déchets Nereda</option>
+            <option value="number_WWTP">Proportion de stations de traitement de déchets Nereda</option>
             <option value="capacity_pollution_eq">Proportion de la capacité de traitement des déchets Nereda</option>
             <option value="bathing_water_provinces">Score de qualité de l'eau de baignade (de 0 à 100)</option>
         </select>
@@ -113,7 +113,7 @@
         legendControl.addTo(map);
 
         let layerTitles = {
-            "number_WWTP": "Proportion de stations de traitements de déchets Nereda",
+            "number_WWTP": "Proportion de stations de traitement de déchets Nereda",
             "capacity_pollution_eq": "Proportion de la capacité de traitement des déchets Nereda",
             "bathing_water_provinces": "Score de qualité de l'eau de baignade (de 0 à 100)"
         };
@@ -370,7 +370,7 @@
                         backgroundColor: "#91cf60"
                     },
                     {
-                        label: "Excdllente",
+                        label: "Excellente",
                         data: regionData.map(f => f.properties.quality1),
                         backgroundColor: "#1a9850"
                     }

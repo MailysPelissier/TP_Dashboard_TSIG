@@ -1,64 +1,25 @@
-# TP Dashboard – Wastewater & Bathing Water Indicators
+# TP Dashboard TSI-G – Maïlys Pelissier
 
-Interactive web dashboard visualizing environmental indicators across Dutch provinces.
+## Accès au dashboard
 
-## Indicators available
+Le dashboard est hébergé et publié par **GitHub Pages**.
 
-- Number of WWTP (Wastewater Treatment Plants)
-- Pollution capacity (population equivalent)
-- Bathing water quality
+Il est directement accessible depuis ce lien :
 
-Users can:
-- Select an indicator
-- Navigate through years
-- Click on a province to see time-series charts
-- Explore stacked bar charts for detailed breakdown
+https://MailysPelissier.github.io/TP_Dashboard_TSIG/
 
----
+## Fonctionnement
 
-## Access the dashboard online
+La liste déroulante sous le titre « Indicateur » permet de choisir l’indicateur à afficher.
 
-The dashboard is hosted using **GitHub Pages**.
+Le slider en dessous de l’année permet de choisir l’année dans laquelle afficher les données sur la carte. La liste des années disponibles dépend de l’indicateur.
 
-Open it directly in your browser:
+Quand on clique sur une province, les graphiques correspondant aux données de l’indicateur sélectionné sur cette région s’affichent. Il faut bien recliquer sur la région après avoir changé d’indicateur pour que les diagrammes se mettent à jour.
 
-https://mailyspelissier.github.io/TP_Dashboard_TSIG/
-
-No installation required.
-
----
-
-## Run locally on your computer
-
-If you want to run it locally:
-
-1. Clone the repository:
+## Structure du projet
 
 ```bash
-git clone https://github.com/MailysPelissier/TP_Dashboard_TSIG.git
-```
-
-2. Open the folder.
-
-3. Double-click on index.html.
-
-If the GeoJSON files do not load (CORS restriction), use a local server:
-
-```bash
-# If Python is installed
-python -m http.server 8000
-```
-
-Then open:
-
-```bash
-http://localhost:8000
-```
-
-## Project structure
-
-```bash
-TP_Dashboard/
+TP_Dashboard_TSIG/
 │
 ├── index.html
 ├── data/
@@ -68,12 +29,10 @@ TP_Dashboard/
 └── README.md
 ```
 
-## Technologies used
+## Technologies utilisées
 
-Leaflet.js (interactive maps)
+Les bibliothèques utilisées sont Leaflet pour la cartographie et Chart pour les graphiques.
 
-Chart.js (data visualization)
+Le fond cartographique utilisé est celui d’OpenStreetMap.
 
-GeoJSON
-
-GitHub Pages (hosting)
+Les données sont chargés sous la forme de GeoJSON (voir dossier data).
